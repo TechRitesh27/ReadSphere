@@ -6,9 +6,8 @@ import com.p99training.BookStoreSystem.service.ReadCsvService;
 import com.p99training.BookStoreSystem.service.ReportService;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class ReportServiceImpl implements ReportService {
@@ -26,73 +25,56 @@ public class ReportServiceImpl implements ReportService {
 
         InventoryReportDTO report = new InventoryReportDTO();
 
-        int totalBooks = books.size();
+        // Basic aggregations using Streams
+        report.setTotalBooks(books.size());
 
-        int totalQuantity = 0;
+        report.setTotalQuantity(
+                books.stream()
+                        .mapToInt(BooksResponseDTO::getQuantity)
+                        .sum()
+        );
 
-        double totalInventoryValue = 0;
+        report.setTotalInventoryValue(
+                books.stream()
+                        .mapToDouble(b -> b.getPrice() * b.getQuantity())
+                        .sum()
+        );
 
-        Map<String, Integer> categoryWiseBookCount = new HashMap<>();
+        // Grouping by Category
+        report.setCategoryWiseBookCount(
+                books.stream()
+                        .collect(Collectors.groupingBy(
+                                BooksResponseDTO::getCategory,
+                                Collectors.summingInt(b -> 1)
+                        ))
+        );
 
-        Map<String, Integer> languageWiseReport = new HashMap<>();
+        // Grouping by Language
+        report.setLanguageWiseReport(
+                books.stream()
+                        .collect(Collectors.groupingBy(
+                                BooksResponseDTO::getLanguage,
+                                Collectors.summingInt(b -> 1)
+                        ))
+        );
 
-        Map<String, Integer> publisherWiseReport = new HashMap<>();
+        // Grouping by Publisher
+        report.setPublisherWiseReport(
+                books.stream()
+                        .collect(Collectors.groupingBy(
+                                BooksResponseDTO::getPublisher,
+                                Collectors.summingInt(b -> 1)
+                        ))
+        );
 
-        Map<Integer, Integer> yearWisePublishedBooks = new HashMap<>();
-
-        for (BooksResponseDTO book : books) {
-
-            // Total Quantity
-            totalQuantity += book.getQuantity();
-
-            // Total Inventory Value
-            totalInventoryValue +=
-                    (book.getPrice() * book.getQuantity());
-
-            // Category Wise Count
-            categoryWiseBookCount.put(
-                    book.getCategory(),
-                    categoryWiseBookCount.getOrDefault(
-                            book.getCategory(), 0
-                    ) + 1
-            );
-
-            // Language Wise Report
-            languageWiseReport.put(
-                    book.getLanguage(),
-                    languageWiseReport.getOrDefault(
-                            book.getLanguage(), 0
-                    ) + 1
-            );
-
-            // Publisher Wise Report
-            publisherWiseReport.put(
-                    book.getPublisher(),
-                    publisherWiseReport.getOrDefault(
-                            book.getPublisher(), 0
-                    ) + 1
-            );
-
-            // Year Wise Published Books
-            yearWisePublishedBooks.put(
-                    book.getPublishedYear(),
-                    yearWisePublishedBooks.getOrDefault(
-                            book.getPublishedYear(), 0
-                    ) + 1
-            );
-        }
-
-        report.setTotalBooks(totalBooks);
-        report.setTotalQuantity(totalQuantity);
-        report.setTotalInventoryValue(totalInventoryValue);
-
-        report.setCategoryWiseBookCount(categoryWiseBookCount);
-
-        report.setLanguageWiseReport(languageWiseReport);
-
-        report.setPublisherWiseReport(publisherWiseReport);
-
-        report.setYearWisePublishedBooks(yearWisePublishedBooks);
+        // Grouping by Published Year
+        report.setYearWisePublishedBooks(
+                books.stream()
+                        .collect(Collectors.groupingBy(
+                                BooksResponseDTO::getPublishedYear,
+                                Collectors.summingInt(b -> 1)
+                        ))
+        );
 
         return report;
     }
