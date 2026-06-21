@@ -4,6 +4,8 @@ import com.p99training.BookStoreSystem.dto.BooksResponseDTO;
 import com.p99training.BookStoreSystem.dto.InventoryReportDTO;
 import com.p99training.BookStoreSystem.service.ReadCsvService;
 import com.p99training.BookStoreSystem.service.ReportService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -11,6 +13,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class ReportServiceImpl implements ReportService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ReportServiceImpl.class);
 
     private final ReadCsvService readCsvService;
 
@@ -20,12 +24,13 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public InventoryReportDTO generateInventoryReport() {
+        logger.info("Generating inventory report...");
 
         List<BooksResponseDTO> books = readCsvService.readBooks();
 
         InventoryReportDTO report = new InventoryReportDTO();
 
-        // Basic aggregations using Streams
+        // --- Basic aggregations using Streams ---
         report.setTotalBooks(books.size());
 
         report.setTotalQuantity(
@@ -40,7 +45,7 @@ public class ReportServiceImpl implements ReportService {
                         .sum()
         );
 
-        // Grouping by Category
+        // --- Grouping by Category ---
         report.setCategoryWiseBookCount(
                 books.stream()
                         .collect(Collectors.groupingBy(
@@ -49,7 +54,7 @@ public class ReportServiceImpl implements ReportService {
                         ))
         );
 
-        // Grouping by Language
+        // --- Grouping by Language ---
         report.setLanguageWiseReport(
                 books.stream()
                         .collect(Collectors.groupingBy(
@@ -58,7 +63,7 @@ public class ReportServiceImpl implements ReportService {
                         ))
         );
 
-        // Grouping by Publisher
+        // --- Grouping by Publisher ---
         report.setPublisherWiseReport(
                 books.stream()
                         .collect(Collectors.groupingBy(
@@ -67,7 +72,7 @@ public class ReportServiceImpl implements ReportService {
                         ))
         );
 
-        // Grouping by Published Year
+        // --- Grouping by Published Year ---
         report.setYearWisePublishedBooks(
                 books.stream()
                         .collect(Collectors.groupingBy(
@@ -75,6 +80,9 @@ public class ReportServiceImpl implements ReportService {
                                 Collectors.summingInt(b -> 1)
                         ))
         );
+
+        logger.info("Inventory report generated - totalBooks={}, totalQuantity={}, totalValue={}",
+                report.getTotalBooks(), report.getTotalQuantity(), report.getTotalInventoryValue());
 
         return report;
     }
