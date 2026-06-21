@@ -1,76 +1,65 @@
-# Compiled class files
-*.class
-
-# Package Files
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# Maven
+HELP.md
 target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
-dependency-reduced-pom.xml
-buildNumber.properties
-.maven.metadata.xml
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
 
-# Gradle
-.gradle/
-build/
-!gradle/wrapper/gradle-wrapper.jar
-
-# IntelliJ IDEA
-.idea/
-*.iml
-*.iws
-*.ipr
-*.iml
-out/
-
-# Eclipse
+### STS ###
+.apt_generated
 .classpath
+.factorypath
 .project
-.settings/
-bin/
+.settings
+.springBeans
+.sts4-cache
 
-# NetBeans
-nbproject/
-.nb-gradle/
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
 
-# VS Code
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
 .vscode/
-*.code-workspace
 
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
+# OS files
+.DS_Store          # macOS
+Thumbs.db          # Windows
+desktop.ini        # Windows
 
-# Windows
-Thumbs.db
-ehthumbs.db
-
-# Linux
-*~
+# Environment & secrets
+.env
+*.env
+application-local.properties
+application-secret.properties
 
 # Logs
 *.log
 logs/
 
-# Local environment
-.env
-local.properties
+# Java
+*.class
+*.jar
+*.war
+*.ear
 
-# Misc
-*.swp
-*.swo
-*~
-.DS_Store
+# IntelliJ (a few extras)
+*.iml              # already there, but worth noting
+out/               # IntelliJ output dir (different from target/)
+
+# Maven wrapper jar (already there)
+# .mvn/wrapper/maven-wrapper.jar
+
+# Spring Boot dev tools restart file
+.reloadtrigger
 
