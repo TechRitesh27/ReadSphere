@@ -3,31 +3,33 @@ package com.p99training.BookStoreSystem.service.impl;
 import com.p99training.BookStoreSystem.dto.BookRequestDTO;
 import com.p99training.BookStoreSystem.dto.BooksResponseDTO;
 import com.p99training.BookStoreSystem.entity.Book;
+import com.p99training.BookStoreSystem.exception.BookNotFoundException;
+import com.p99training.BookStoreSystem.mapper.BookMapper;
 import com.p99training.BookStoreSystem.service.BookService;
 import com.p99training.BookStoreSystem.service.ReadCsvService;
 import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class BookServiceImpl implements BookService {
 
-    private static final Logger logger = LoggerFactory.getLogger(BookServiceImpl.class);
-
     private final ReadCsvService readCsvService;
+    private final BookMapper bookMapper;
 
-    // In-memory store — seeded from CSV at startup
-    private final List<Book> bookStore = new ArrayList<>();
+    // Thread-safe in-memory store — seeded from CSV at startup
+    private final List<Book> bookStore = new CopyOnWriteArrayList<>();
     private final AtomicInteger idCounter = new AtomicInteger();
 
-    public BookServiceImpl(ReadCsvService readCsvService) {
+    public BookServiceImpl(ReadCsvService readCsvService, BookMapper bookMapper) {
         this.readCsvService = readCsvService;
+        this.bookMapper = bookMapper;
     }
 
     // -------------------------------------------------
@@ -35,7 +37,7 @@ public class BookServiceImpl implements BookService {
     // -------------------------------------------------
     @PostConstruct
     public void init() {
-        logger.info("Initializing book store from CSV...");
+        log.info("Initializing book store from CSV...");
 
         List<Book> books = readCsvService.readBooksAsEntities();
         bookStore.addAll(books);
@@ -43,7 +45,7 @@ public class BookServiceImpl implements BookService {
         int maxId = books.stream().mapToInt(Book::getId).max().orElse(0);
         idCounter.set(maxId + 1);
 
-        logger.info("Book store initialized with {} books. Next ID starts at {}",
+        log.info("Book store initialized with {} books. Next ID starts at {}",
                 bookStore.size(), idCounter.get());
     }
 
@@ -57,7 +59,7 @@ public class BookServiceImpl implements BookService {
             Double minPrice,
             Double maxPrice) {
 
-        logger.debug("Fetching all books with filters - category={}, language={}, minPrice={}, maxPrice={}",
+        log.debug("Fetching all books with filters - category={}, language={}, minPrice={}, maxPrice={}",
                 category, language, minPrice, maxPrice);
 
         List<BooksResponseDTO> result = bookStore.stream()
@@ -65,10 +67,10 @@ public class BookServiceImpl implements BookService {
                 .filter(b -> language == null || b.getLanguage().equalsIgnoreCase(language))
                 .filter(b -> minPrice == null || b.getPrice() >= minPrice)
                 .filter(b -> maxPrice == null || b.getPrice() <= maxPrice)
-                .map(this::toResponseDTO)
+                .map(bookMapper::entityToDto)
                 .collect(Collectors.toList());
 
-        logger.debug("getAllBooks - found {} book(s) matching filters", result.size());
+        log.debug("getAllBooks - found {} book(s) matching filters", result.size());
 
         return result;
     }
@@ -78,15 +80,15 @@ public class BookServiceImpl implements BookService {
     // -------------------------------------------------
     @Override
     public BooksResponseDTO getBookById(int id) {
-        logger.debug("Fetching book with id={}", id);
+        log.debug("Fetching book with id={}", id);
 
         return bookStore.stream()
                 .filter(b -> b.getId() == id)
-                .map(this::toResponseDTO)
+                .map(bookMapper::entityToDto)
                 .findFirst()
                 .orElseThrow(() -> {
-                    logger.warn("Book not found with id={}", id);
-                    return new RuntimeException("Book not found with id: " + id);
+                    log.warn("Book not found with id={}", id);
+                    return new BookNotFoundException(id);
                 });
     }
 
@@ -95,36 +97,60 @@ public class BookServiceImpl implements BookService {
     // -------------------------------------------------
     @Override
     public BooksResponseDTO addBook(BookRequestDTO request) {
-        Book book = new Book();
-        book.setId(idCounter.getAndIncrement());
-        mapRequestToBook(request, book);
+        Book book = Book.builder()
+                .id(idCounter.getAndIncrement())
+                .title(request.getTitle())
+                .author(request.getAuthor())
+                .isbn(request.getIsbn())
+                .category(request.getCategory())
+                .price(request.getPrice())
+                .publisher(request.getPublisher())
+                .quantity(request.getQuantity())
+                .publishedYear(request.getPublishedYear())
+                .language(request.getLanguage())
+                .build();
+
         bookStore.add(book);
 
-        logger.info("Book added - id={}, title={}, author={}", book.getId(), book.getTitle(), book.getAuthor());
+        log.info("Book added - id={}, title={}, author={}", book.getId(), book.getTitle(), book.getAuthor());
 
-        return toResponseDTO(book);
+        return bookMapper.entityToDto(book);
     }
 
     // -------------------------------------------------
-    // UPDATE
+    // UPDATE — fetch existing, rebuild with new values
     // -------------------------------------------------
     @Override
     public BooksResponseDTO updateBook(int id, BookRequestDTO request) {
-        logger.debug("Updating book with id={}", id);
+        log.debug("Updating book with id={}", id);
 
-        Book book = bookStore.stream()
+        Book existing = bookStore.stream()
                 .filter(b -> b.getId() == id)
                 .findFirst()
                 .orElseThrow(() -> {
-                    logger.warn("Update failed - book not found with id={}", id);
-                    return new RuntimeException("Book not found with id: " + id);
+                    log.warn("Update failed - book not found with id={}", id);
+                    return new BookNotFoundException(id);
                 });
 
-        mapRequestToBook(request, book);
+        // Rebuild with same id, all fields from request
+        Book updated = Book.builder()
+                .id(existing.getId())
+                .title(request.getTitle())
+                .author(request.getAuthor())
+                .isbn(request.getIsbn())
+                .category(request.getCategory())
+                .price(request.getPrice())
+                .publisher(request.getPublisher())
+                .quantity(request.getQuantity())
+                .publishedYear(request.getPublishedYear())
+                .language(request.getLanguage())
+                .build();
 
-        logger.info("Book updated - id={}, new title={}", id, book.getTitle());
+        bookStore.replaceAll(b -> b.getId() == id ? updated : b);
 
-        return toResponseDTO(book);
+        log.info("Book updated - id={}, new title={}", id, updated.getTitle());
+
+        return bookMapper.entityToDto(updated);
     }
 
     // -------------------------------------------------
@@ -132,44 +158,15 @@ public class BookServiceImpl implements BookService {
     // -------------------------------------------------
     @Override
     public void deleteBook(int id) {
-        logger.debug("Deleting book with id={}", id);
+        log.debug("Deleting book with id={}", id);
 
         boolean removed = bookStore.removeIf(b -> b.getId() == id);
 
         if (!removed) {
-            logger.warn("Delete failed - book not found with id={}", id);
-            throw new RuntimeException("Book not found with id: " + id);
+            log.warn("Delete failed - book not found with id={}", id);
+            throw new BookNotFoundException(id);
         }
 
-        logger.info("Book deleted - id={}", id);
-    }
-
-    // -------------------------------------------------
-    // Helpers
-    // -------------------------------------------------
-    private void mapRequestToBook(BookRequestDTO request, Book book) {
-        book.setTitle(request.getTitle());
-        book.setAuthor(request.getAuthor());
-        book.setIsbn(request.getIsbn());
-        book.setCategory(request.getCategory());
-        book.setPrice(request.getPrice());
-        book.setPublisher(request.getPublisher());
-        book.setQuantity(request.getQuantity());
-        book.setPublishedYear(request.getPublishedYear());
-        book.setLanguage(request.getLanguage());
-    }
-
-    private BooksResponseDTO toResponseDTO(Book book) {
-        BooksResponseDTO dto = new BooksResponseDTO();
-        dto.setTitle(book.getTitle());
-        dto.setAuthor(book.getAuthor());
-        dto.setIsbn(book.getIsbn());
-        dto.setCategory(book.getCategory());
-        dto.setPrice(book.getPrice());
-        dto.setPublisher(book.getPublisher());
-        dto.setQuantity(book.getQuantity());
-        dto.setPublishedYear(book.getPublishedYear());
-        dto.setLanguage(book.getLanguage());
-        return dto;
+        log.info("Book deleted - id={}", id);
     }
 }

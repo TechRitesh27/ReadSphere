@@ -1,23 +1,22 @@
 package com.p99training.BookStoreSystem.controller;
 
+import jakarta.validation.Valid;
 import com.p99training.BookStoreSystem.dto.BookRequestDTO;
 import com.p99training.BookStoreSystem.dto.BooksResponseDTO;
 import com.p99training.BookStoreSystem.service.BookService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/books")
 public class BookController {
 
-    private static final Logger logger = LoggerFactory.getLogger(BookController.class);
     private final BookService bookService;
-
 
     public BookController(BookService bookService) {
         this.bookService = bookService;
@@ -33,12 +32,12 @@ public class BookController {
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice) {
 
-        logger.info("GET /books - filters: category={}, language={}, minPrice={}, maxPrice={}",
+        log.info("GET /books - filters: category={}, language={}, minPrice={}, maxPrice={}",
                 category, language, minPrice, maxPrice);
 
         List<BooksResponseDTO> result = bookService.getAllBooks(category, language, minPrice, maxPrice);
 
-        logger.info("GET /books - returning {} book(s)" , result.size());
+        log.info("GET /books - returning {} book(s)" , result.size());
 
         return ResponseEntity.ok(result);
     }
@@ -48,11 +47,11 @@ public class BookController {
     @GetMapping("/{id}")
     public ResponseEntity<BooksResponseDTO> getBookById(@PathVariable int id) {
 
-        logger.info("GET /books/{} - fetching by id", id);
+        log.info("GET /books/{} - fetching by id", id);
 
         BooksResponseDTO result = bookService.getBookById(id);
 
-        logger.info("GET /books/{} - found book: {}", id, result.getTitle());
+        log.info("GET /books/{} - found book: {}", id, result.getTitle());
 
         return ResponseEntity.ok(result);
     }
@@ -60,29 +59,29 @@ public class BookController {
 
     // POST /books
     @PostMapping
-    public ResponseEntity<BooksResponseDTO> addBook(@RequestBody BookRequestDTO request) {
+    public ResponseEntity<BooksResponseDTO> addBook(@Valid @RequestBody BookRequestDTO request) {
 
-        logger.info("POST /books - adding new book : title={}, author={}", request.getTitle(), request.getAuthor());
+        log.info("POST /books - adding new book : title={}, author={}", request.getTitle(), request.getAuthor());
 
         BooksResponseDTO created = bookService.addBook(request);
 
-        logger.info("POST /books book added successfully: title={}", created.getTitle());
+        log.info("POST /books book added successfully: title={}", created.getTitle());
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(bookService.addBook(request));
+                .body(created);
     }
 
     // PUT /books/{id}
     @PutMapping("/{id}")
     public ResponseEntity<BooksResponseDTO> updateBook(
             @PathVariable int id,
-            @RequestBody BookRequestDTO request) {
+            @Valid @RequestBody BookRequestDTO request) {
 
-        logger.info("PUT /books/{} - updating book with title={}", id, request.getTitle());
+        log.info("PUT /books/{} - updating book with title={}", id, request.getTitle());
 
         BooksResponseDTO updated = bookService.updateBook(id, request);
 
-        logger.info("PUT /books/{} - book updated successfully", id);
+        log.info("PUT /books/{} - book updated successfully", id);
 
         return ResponseEntity.ok(updated);
     }
@@ -91,9 +90,9 @@ public class BookController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteBook(@PathVariable int id) {
 
-        logger.info("DELETE /books/{} - deleting book", id);
+        log.info("DELETE /books/{} - deleting book", id);
         bookService.deleteBook(id);
-        logger.info("DELETE /books/{} - book deleted successfully", id);
+        log.info("DELETE /books/{} - book deleted successfully", id);
         return ResponseEntity.ok("Book with id " + id + " deleted successfully");
     }
 }
