@@ -19,16 +19,14 @@ public class ReadCsvServiceImpl implements ReadCsvService {
 
     private final BookMapper bookMapper;
 
-    @Value("${csv.file.path")
+    @Value("${csv.file.path}")
     private String csvFilePath;
 
     public ReadCsvServiceImpl(BookMapper bookMapper) {
         this.bookMapper = bookMapper;
     }
 
-    // -------------------------------------------------------
     // Returns DTO list
-    // -------------------------------------------------------
     @Override
     public List<BooksResponseDTO> readBooks() {
         log.info("Reading books from CSV as DTOs...");
@@ -39,10 +37,7 @@ public class ReadCsvServiceImpl implements ReadCsvService {
         log.info("Successfully read {} books from CSV", books.size());
         return books;
     }
-
-    // -------------------------------------------------------
     // Returns Entity list (used by BookService to seed store)
-    // -------------------------------------------------------
     @Override
     public List<Book> readBooksAsEntities() {
         log.info("Reading books from CSV as entities...");

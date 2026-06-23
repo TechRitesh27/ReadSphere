@@ -56,6 +56,13 @@
 			<artifactId>opencsv</artifactId>
 			<version>5.9</version>
 		</dependency>
+
+<!--		Actuator -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
 	</dependencies>
 
 	<build>
