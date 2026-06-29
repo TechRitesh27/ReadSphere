@@ -5,6 +5,7 @@ import com.p99training.BookStoreSystem.dto.InventoryReportDTO;
 import com.p99training.BookStoreSystem.service.BookService;
 import com.p99training.BookStoreSystem.service.ReportService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,8 +22,9 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
+    @Cacheable(value = "inventoryReport")  // cached — only recomputed when evicted by a write
     public InventoryReportDTO generateInventoryReport() {
-        log.info("Generating inventory report from live book store...");
+        log.info("Generating inventory report (cache miss — recomputing)...");
 
         List<BooksResponseDTO> books = bookService.getAllBooks(null, null, null, null);
 

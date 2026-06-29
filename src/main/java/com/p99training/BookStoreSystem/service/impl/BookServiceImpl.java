@@ -11,6 +11,9 @@ import com.p99training.BookStoreSystem.service.BookService;
 import com.p99training.BookStoreSystem.service.ReadCsvService;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -126,11 +129,12 @@ public class BookServiceImpl implements BookService {
     }
 
     // -------------------------------------------------
-    // READ ONE by ID
+    // READ ONE by ID — result cached per id
     // -------------------------------------------------
     @Override
+    @Cacheable(value = "books", key = "#id")
     public BooksResponseDTO getBookById(int id) {
-        log.debug("Fetching book with id={}", id);
+        log.debug("Fetching book with id={} (cache miss — hitting store)", id);
 
         return bookStore.stream()
                 .filter(b -> b.getId() == id)
@@ -143,9 +147,13 @@ public class BookServiceImpl implements BookService {
     }
 
     // -------------------------------------------------
-    // CREATE
+    // CREATE — evict all cached books and report on any write
     // -------------------------------------------------
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "books", allEntries = true),
+        @CacheEvict(value = "inventoryReport", allEntries = true)
+    })
     public BooksResponseDTO addBook(BookRequestDTO request) {
         Book book = Book.builder()
                 .id(idCounter.getAndIncrement())
@@ -168,9 +176,13 @@ public class BookServiceImpl implements BookService {
     }
 
     // -------------------------------------------------
-    // UPDATE — fetch existing, rebuild with new values
+    // UPDATE — evict the specific id entry + report
     // -------------------------------------------------
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "books", key = "#id"),
+        @CacheEvict(value = "inventoryReport", allEntries = true)
+    })
     public BooksResponseDTO updateBook(int id, BookRequestDTO request) {
         log.debug("Updating book with id={}", id);
 
@@ -203,9 +215,13 @@ public class BookServiceImpl implements BookService {
     }
 
     // -------------------------------------------------
-    // DELETE
+    // DELETE — evict the specific id entry + report
     // -------------------------------------------------
     @Override
+    @Caching(evict = {
+        @CacheEvict(value = "books", key = "#id"),
+        @CacheEvict(value = "inventoryReport", allEntries = true)
+    })
     public void deleteBook(int id) {
         log.debug("Deleting book with id={}", id);
 
