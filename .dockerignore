@@ -1,0 +1,21 @@
+# Build output — must be excluded to prevent local JARs from leaking into the build context
+target/
+
+# Version control
+.git/
+.github/
+
+# IDE / tooling folders
+.idea/
+.vscode/
+.junie/
+.kiro/
+
+# Documentation — not needed inside the container
+*.md
+
+# Windows Maven wrapper — the Dockerfile uses the Maven image directly, not the wrapper
+mvnw.cmd
+
+# NOTE: mvnw, pom.xml, and src/ are intentionally NOT excluded —
+# the Dockerfile copies pom.xml and src/ explicitly into the builder stage
