@@ -63,3 +63,6 @@ out/               # IntelliJ output dir (different from target/)
 # Spring Boot dev tools restart file
 .reloadtrigger
 
+# Kiro files 
+.kiro/
+
