@@ -1,7 +1,9 @@
 package com.p99training.BookStoreSystem.service.impl;
 
 import com.p99training.BookStoreSystem.dto.BookRequestDTO;
+import com.p99training.BookStoreSystem.enums.BookSortField;
 import com.p99training.BookStoreSystem.dto.BooksResponseDTO;
+import com.p99training.BookStoreSystem.dto.PagedResponseDTO;
 import com.p99training.BookStoreSystem.entity.Book;
 import com.p99training.BookStoreSystem.exception.BookNotFoundException;
 import com.p99training.BookStoreSystem.mapper.BookMapper;
@@ -11,6 +13,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -50,7 +53,61 @@ public class BookServiceImpl implements BookService {
     }
 
     // -------------------------------------------------
-    // READ ALL — with optional Stream filtering
+    // READ ALL — paginated + sorted + filtered
+    // -------------------------------------------------
+    @Override
+    public PagedResponseDTO<BooksResponseDTO> getAllBooks(
+            String category,
+            String language,
+            Double minPrice,
+            Double maxPrice,
+            int page,
+            int size,
+            BookSortField sortBy,
+            String sortDir) {
+
+        log.debug("getAllBooks - page={}, size={}, sortBy={}, sortDir={}, category={}, language={}, minPrice={}, maxPrice={}",
+                page, size, sortBy, sortDir, category, language, minPrice, maxPrice);
+
+        // Step 1: filter
+        List<BooksResponseDTO> filtered = bookStore.stream()
+                .filter(b -> category == null || b.getCategory().equalsIgnoreCase(category))
+                .filter(b -> language == null || b.getLanguage().equalsIgnoreCase(language))
+                .filter(b -> minPrice == null || b.getPrice() >= minPrice)
+                .filter(b -> maxPrice == null || b.getPrice() <= maxPrice)
+                .map(bookMapper::entityToDto)
+                .collect(Collectors.toList());
+
+        long totalItems = filtered.size();
+        int totalPages = (int) Math.ceil((double) totalItems / size);
+
+        // Step 2: sort
+        Comparator<BooksResponseDTO> comparator = resolveComparator(sortBy);
+        if ("desc".equalsIgnoreCase(sortDir)) {
+            comparator = comparator.reversed();
+        }
+
+        // Step 3: paginate — skip pages before current, take 'size' items
+        List<BooksResponseDTO> pageData = filtered.stream()
+                .sorted(comparator)
+                .skip((long) page * size)
+                .limit(size)
+                .toList();
+
+        log.debug("getAllBooks - totalItems={}, totalPages={}, returning {} item(s) for page {}",
+                totalItems, totalPages, pageData.size(), page);
+
+        return PagedResponseDTO.<BooksResponseDTO>builder()
+                .data(pageData)
+                .page(page)
+                .size(size)
+                .totalItems(totalItems)
+                .totalPages(totalPages)
+                .build();
+    }
+
+    // -------------------------------------------------
+    // READ ALL — flat list (used internally by ReportService)
     // -------------------------------------------------
     @Override
     public List<BooksResponseDTO> getAllBooks(
@@ -59,20 +116,13 @@ public class BookServiceImpl implements BookService {
             Double minPrice,
             Double maxPrice) {
 
-        log.debug("Fetching all books with filters - category={}, language={}, minPrice={}, maxPrice={}",
-                category, language, minPrice, maxPrice);
-
-        List<BooksResponseDTO> result = bookStore.stream()
+        return bookStore.stream()
                 .filter(b -> category == null || b.getCategory().equalsIgnoreCase(category))
                 .filter(b -> language == null || b.getLanguage().equalsIgnoreCase(language))
                 .filter(b -> minPrice == null || b.getPrice() >= minPrice)
                 .filter(b -> maxPrice == null || b.getPrice() <= maxPrice)
                 .map(bookMapper::entityToDto)
                 .collect(Collectors.toList());
-
-        log.debug("getAllBooks - found {} book(s) matching filters", result.size());
-
-        return result;
     }
 
     // -------------------------------------------------
@@ -132,7 +182,6 @@ public class BookServiceImpl implements BookService {
                     return new BookNotFoundException(id);
                 });
 
-        // Rebuild with same id, all fields from request
         Book updated = Book.builder()
                 .id(existing.getId())
                 .title(request.getTitle())
@@ -168,5 +217,19 @@ public class BookServiceImpl implements BookService {
         }
 
         log.info("Book deleted - id={}", id);
+    }
+
+    // -------------------------------------------------
+    // Resolve comparator from sort field enum
+    // -------------------------------------------------
+    private Comparator<BooksResponseDTO> resolveComparator(BookSortField sortBy) {
+        return switch (sortBy) {
+            case TITLE         -> Comparator.comparing(BooksResponseDTO::getTitle, String.CASE_INSENSITIVE_ORDER);
+            case AUTHOR        -> Comparator.comparing(BooksResponseDTO::getAuthor, String.CASE_INSENSITIVE_ORDER);
+            case PRICE         -> Comparator.comparingDouble(BooksResponseDTO::getPrice);
+            case PUBLISHED_YEAR -> Comparator.comparingInt(BooksResponseDTO::getPublishedYear);
+            case QUANTITY      -> Comparator.comparingInt(BooksResponseDTO::getQuantity);
+            case ID            -> Comparator.comparingInt(BooksResponseDTO::getId);
+        };
     }
 }

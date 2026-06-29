@@ -1,11 +1,14 @@
 package com.p99training.BookStoreSystem.entity;
 
+import jakarta.validation.Valid;
 import lombok.Builder;
 import lombok.Data;
 
 @Data
 @Builder
+@Valid
 public class Book {
+
     private int id;
     private String title;
     private String author;

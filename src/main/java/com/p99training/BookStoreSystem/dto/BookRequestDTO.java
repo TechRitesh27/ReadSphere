@@ -22,6 +22,7 @@ public class BookRequestDTO {
     private String category;
 
     @Positive(message = "Price must be greater than 0")
+    @Min(value = 10)
     private double price;
 
     @NotBlank(message = "Publisher is required")
