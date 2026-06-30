@@ -31,7 +31,15 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // Swagger UI — must be open so docs are accessible without login
+                .requestMatchers(
+                    "/swagger-ui.html",
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**"
+                ).permitAll()
+                // Only admins can delete books
                 .requestMatchers(HttpMethod.DELETE, "/books/**").hasRole("ADMIN")
+                // Everything else is publicly accessible
                 .anyRequest().permitAll()
             )
             .httpBasic(basic -> {});
